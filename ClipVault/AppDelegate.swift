@@ -50,6 +50,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         clipboardMonitor.startMonitoring()
 
+        // Global ⌘7 → open clipboard history (sandbox-safe, no Accessibility needed)
+        HotKeyManager.shared.register { [weak self] in
+            self?.openViewAll()
+        }
+
         AppLogger.lifecycle.info("Application started successfully")
     }
 
@@ -93,6 +98,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         clipboardMonitor.stopMonitoring()
+        HotKeyManager.shared.unregister()
     }
 
     // MARK: - Menu Bar Actions

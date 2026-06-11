@@ -335,7 +335,7 @@ Managed by `SettingsManager` wrapping UserDefaults:
 1. **Polling-based monitoring** - 300ms interval may miss very rapid clipboard changes
 2. **No encrypted search index** - must decrypt all items to search
 3. **Content types**: Only text and RTF supported (no images, files, HTML)
-4. **No global keyboard shortcuts** - must click menu bar icon
+4. **Single global keyboard shortcut** - ⌘7 opens the View All window (hardcoded in HotKeyManager.swift, not configurable)
 5. **Single-device encryption key** - stored in Keychain, not synced
 
 ## References

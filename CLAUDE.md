@@ -121,6 +121,7 @@ Timer (300ms) → Check changeCount → Get frontmost app bundle ID
 - **SettingsManager.swift**: UserDefaults wrapper for preferences
 - **PasteHelper.swift**: Auto-paste via CGEvent synthesis (requires Accessibility permissions)
 - **NotificationManager.swift**: Visual on-screen notifications ("Copied!", "Pasted!")
+- **HotKeyManager.swift**: Global ⌘7 hotkey via Carbon RegisterEventHotKey (opens View All window)
 
 ### Views (SwiftUI)
 
@@ -140,6 +141,27 @@ Timer (300ms) → Check changeCount → Get frontmost app bundle ID
   - Uniqueness constraint on contentHash for deduplication
 
 ## Important Implementation Details
+
+### Global Hotkey (⌘7)
+
+Added 2026-06-11 (local fork change, not upstream): pressing ⌘7 anywhere in macOS opens/focuses the View All window.
+
+- Implemented in `Managers/HotKeyManager.swift` using Carbon's `RegisterEventHotKey` — works inside the sandbox, requires NO Accessibility permission and no entitlement changes
+- Hardcoded to ⌘7 (`kVK_ANSI_7` + `cmdKey`), not user-configurable
+- Registered in `AppDelegate.startNormalOperation()` with a closure calling `openViewAll()`; unregistered in `applicationWillTerminate`. The DEBUG demo-mode branch intentionally skips registration
+- Registration failure is logged (`AppLogger.hotkeys`) and non-fatal — app stays usable via the menu bar
+- Side effect: ⌘7 is swallowed system-wide, so other apps' ⌘7 shortcuts (Xcode breakpoint navigator, Safari tab 7) won't fire while ClipVault runs
+
+### Local Fork / Build Notes (this machine)
+
+- Upstream `eddmann/ClipVault` is read-only; feature work is pushed to the fork `northfacejmb/ClipVault`
+- `/Applications/ClipVault.app` is a locally built, **ad-hoc signed** Release copy (Edward Mann's notarized v1.2.0 backed up at `~/ClipVault-notarized-backup.app`)
+- Automatic signing fails here (no cert for team ANGUD7343N) — build with:
+  ```bash
+  xcodebuild -project ClipVault.xcodeproj -scheme ClipVault -configuration Release \
+    -derivedDataPath build CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="-" DEVELOPMENT_TEAM="" build
+  ```
+- Because the ad-hoc signature differs from the notarized app's, the Keychain encryption key did not carry over — history captured by the old binary is undecryptable; the app created a fresh key
 
 ### Menu Bar Interactions
 

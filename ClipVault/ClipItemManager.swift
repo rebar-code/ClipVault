@@ -130,6 +130,14 @@ class ClipItemManager {
         }
     }
 
+    /// Fetches the most recent items by pure recency (ignores pinned-first ordering)
+    func fetchRecentItems(limit: Int) throws -> [ClipItem] {
+        let request = ClipItem.fetchRequest()
+        request.sortDescriptors = [NSSortDescriptor(keyPath: \ClipItem.dateAdded, ascending: false)]
+        request.fetchLimit = limit
+        return try context.fetch(request)
+    }
+
     /// Fetches the most recent item
     func fetchMostRecentItem() throws -> ClipItem? {
         let request = ClipItem.fetchAllRequest()

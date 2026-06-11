@@ -9,7 +9,10 @@
 import AppKit
 import Carbon.HIToolbox
 
-/// Manages the app's single global hotkey (⇧⌘7 → open clipboard history).
+/// Manages the app's single global hotkey (⇧⌘7 → QuickPickerManager: tap opens
+/// the View All window, hold ⌘⇧ + tap 7 again opens the quick picker).
+/// Carbon re-fires kEventHotKeyPressed each time the combo is re-completed,
+/// so the handler runs on every 7 tap while ⌘⇧ stays held.
 final class HotKeyManager {
     static let shared = HotKeyManager()
     private init() {}

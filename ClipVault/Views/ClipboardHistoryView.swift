@@ -10,7 +10,10 @@ import Combine
 import OSLog
 
 struct ClipboardHistoryView: View {
+    var onPasteRequest: ((ClipItem) -> Void)? = nil
+
     @StateObject private var viewModel = ClipboardHistoryViewModel()
+    @State private var selection: ClipItem.ID? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -60,7 +63,7 @@ struct ClipboardHistoryView: View {
             Divider()
 
             // Table
-            Table(viewModel.filteredItems) {
+            Table(viewModel.filteredItems, selection: $selection) {
                 TableColumn("Preview") { item in
                     HStack(spacing: 4) {
                         // Show RTF indicator icon if item has rich text data
@@ -149,11 +152,31 @@ struct ClipboardHistoryView: View {
                 }
                 .width(ideal: 100)
             }
+            .contextMenu(forSelectionType: ClipItem.ID.self) { _ in
+                // No context menu - this modifier is here for primaryAction (double-click)
+            } primaryAction: { ids in
+                guard let item = item(for: ids.first) else { return }
+                if let onPasteRequest {
+                    onPasteRequest(item)
+                } else {
+                    viewModel.copyToClipboard(item: item)
+                }
+            }
+            .onChange(of: selection) { _, newValue in
+                // Single click selects a row → copy it to the clipboard
+                guard let item = item(for: newValue) else { return }
+                viewModel.copyToClipboard(item: item)
+            }
         }
         .frame(minWidth: 800, minHeight: 500)
         .onAppear {
             viewModel.refresh()
         }
+    }
+
+    private func item(for id: ClipItem.ID?) -> ClipItem? {
+        guard let id else { return nil }
+        return viewModel.filteredItems.first { $0.id == id }
     }
 }
 

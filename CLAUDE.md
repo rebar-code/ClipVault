@@ -121,7 +121,7 @@ Timer (300ms) → Check changeCount → Get frontmost app bundle ID
 - **SettingsManager.swift**: UserDefaults wrapper for preferences
 - **PasteHelper.swift**: Auto-paste via CGEvent synthesis (requires Accessibility permissions)
 - **NotificationManager.swift**: Visual on-screen notifications ("Copied!", "Pasted!")
-- **HotKeyManager.swift**: Global ⌘7 hotkey via Carbon RegisterEventHotKey (opens View All window)
+- **HotKeyManager.swift**: Global ⇧⌘7 hotkey via Carbon RegisterEventHotKey (opens View All window)
 
 ### Views (SwiftUI)
 
@@ -142,15 +142,15 @@ Timer (300ms) → Check changeCount → Get frontmost app bundle ID
 
 ## Important Implementation Details
 
-### Global Hotkey (⌘7)
+### Global Hotkey (⇧⌘7)
 
-Added 2026-06-11 (local fork change, not upstream): pressing ⌘7 anywhere in macOS opens/focuses the View All window.
+Added 2026-06-11 (local fork change, not upstream): pressing ⇧⌘7 anywhere in macOS opens/focuses the View All window.
 
 - Implemented in `Managers/HotKeyManager.swift` using Carbon's `RegisterEventHotKey` — works inside the sandbox, requires NO Accessibility permission and no entitlement changes
-- Hardcoded to ⌘7 (`kVK_ANSI_7` + `cmdKey`), not user-configurable
+- Hardcoded to ⇧⌘7 (`kVK_ANSI_7` + `cmdKey | shiftKey`), not user-configurable
 - Registered in `AppDelegate.startNormalOperation()` with a closure calling `openViewAll()`; unregistered in `applicationWillTerminate`. The DEBUG demo-mode branch intentionally skips registration
 - Registration failure is logged (`AppLogger.hotkeys`) and non-fatal — app stays usable via the menu bar
-- Side effect: ⌘7 is swallowed system-wide, so other apps' ⌘7 shortcuts (Xcode breakpoint navigator, Safari tab 7) won't fire while ClipVault runs
+- Side effect: ⇧⌘7 is swallowed system-wide, so any app using that shortcut won't see it while ClipVault runs
 
 ### Local Fork / Build Notes (this machine)
 
@@ -357,7 +357,7 @@ Managed by `SettingsManager` wrapping UserDefaults:
 1. **Polling-based monitoring** - 300ms interval may miss very rapid clipboard changes
 2. **No encrypted search index** - must decrypt all items to search
 3. **Content types**: Only text and RTF supported (no images, files, HTML)
-4. **Single global keyboard shortcut** - ⌘7 opens the View All window (hardcoded in HotKeyManager.swift, not configurable)
+4. **Single global keyboard shortcut** - ⇧⌘7 opens the View All window (hardcoded in HotKeyManager.swift, not configurable)
 5. **Single-device encryption key** - stored in Keychain, not synced
 
 ## References

@@ -2,14 +2,14 @@
 //  HotKeyManager.swift
 //  ClipVault
 //
-//  Registers the global ⌘7 hotkey using Carbon's RegisterEventHotKey.
+//  Registers the global ⇧⌘7 hotkey using Carbon's RegisterEventHotKey.
 //  Works in sandboxed apps and requires no Accessibility permission.
 //
 
 import AppKit
 import Carbon.HIToolbox
 
-/// Manages the app's single global hotkey (⌘7 → open clipboard history).
+/// Manages the app's single global hotkey (⇧⌘7 → open clipboard history).
 final class HotKeyManager {
     static let shared = HotKeyManager()
     private init() {}
@@ -26,7 +26,7 @@ final class HotKeyManager {
 
     private let hotKeyID = EventHotKeyID(signature: HotKeyManager.signature, id: 1)
 
-    /// Registers ⌘7 as a global hotkey. Repeated calls are ignored.
+    /// Registers ⇧⌘7 as a global hotkey. Repeated calls are ignored.
     func register(onHotKey: @escaping () -> Void) {
         guard hotKeyRef == nil else {
             AppLogger.hotkeys.debug("Hotkey already registered; ignoring duplicate register call")
@@ -81,7 +81,7 @@ final class HotKeyManager {
 
         let registerStatus = RegisterEventHotKey(
             UInt32(kVK_ANSI_7),
-            UInt32(cmdKey),
+            UInt32(cmdKey | shiftKey),
             hotKeyID,
             GetApplicationEventTarget(),
             0,
@@ -89,9 +89,9 @@ final class HotKeyManager {
         )
 
         if registerStatus == noErr {
-            AppLogger.hotkeys.info("Registered global hotkey ⌘7")
+            AppLogger.hotkeys.info("Registered global hotkey ⇧⌘7")
         } else {
-            AppLogger.hotkeys.error("Failed to register global hotkey ⌘7 (status: \(registerStatus))")
+            AppLogger.hotkeys.error("Failed to register global hotkey ⇧⌘7 (status: \(registerStatus))")
             if let eventHandlerRef {
                 RemoveEventHandler(eventHandlerRef)
                 self.eventHandlerRef = nil

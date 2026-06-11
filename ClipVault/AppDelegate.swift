@@ -50,7 +50,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         clipboardMonitor.startMonitoring()
 
-        // Global ⌘7 → open clipboard history (sandbox-safe, no Accessibility needed)
+        // Global ⇧⌘7 → open clipboard history (sandbox-safe, no Accessibility needed)
         HotKeyManager.shared.register { [weak self] in
             self?.openViewAll()
         }

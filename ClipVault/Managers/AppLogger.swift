@@ -58,6 +58,10 @@ struct AppLogger {
     /// Logging for application lifecycle
     /// Use for: startup, shutdown, state transitions
     static let lifecycle = Logger(subsystem: subsystem, category: "lifecycle")
+
+    /// Logging for global hotkey registration and handling
+    /// Use for: RegisterEventHotKey status, hotkey presses
+    static let hotkeys = Logger(subsystem: subsystem, category: "hotkeys")
 }
 
 // MARK: - Privacy Helpers

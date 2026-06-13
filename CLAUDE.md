@@ -121,11 +121,14 @@ Timer (300ms) → Check changeCount → Get frontmost app bundle ID
 - **SettingsManager.swift**: UserDefaults wrapper for preferences
 - **PasteHelper.swift**: Auto-paste via CGEvent synthesis (requires Accessibility permissions)
 - **NotificationManager.swift**: Visual on-screen notifications ("Copied!", "Pasted!")
+- **HotKeyManager.swift**: Global ⇧⌘7 hotkey via Carbon RegisterEventHotKey (forwards to QuickPickerManager)
+- **QuickPickerManager.swift**: State machine for the ⇧⌘7 tap-vs-hold behavior; owns the quick-picker panel, NSEvent monitors, and paste handoff
 
 ### Views (SwiftUI)
 
 - **SettingsView.swift**: Tabbed settings (General, Privacy, About) using native Settings scene
-- **ClipboardHistoryView.swift**: View All window with table, search, app filtering
+- **ClipboardHistoryView.swift**: View All window with table, search, app filtering. Single-clicking a row copies it ("Copied!" notification); double-clicking pastes it into the previously frontmost app and closes the window (falls back to copy when no paste handler is wired, e.g. demo mode)
+- **QuickPickerView.swift**: Compact hold-and-cycle picker list shown by QuickPickerManager near the cursor
 - **CopyNotificationView.swift**: Animated notification overlay (center screen, 1.5s auto-dismiss)
 
 ### Models
@@ -140,6 +143,35 @@ Timer (300ms) → Check changeCount → Get frontmost app bundle ID
   - Uniqueness constraint on contentHash for deduplication
 
 ## Important Implementation Details
+
+### Global Hotkey (⇧⌘7) + Quick Picker
+
+Added 2026-06-11 (local fork change, not upstream). The single ⇧⌘7 hotkey has two behaviors, driven by a state machine in `Managers/QuickPickerManager.swift` (`idle → armed → picking → pendingPaste → idle`):
+
+- **Tap + release** ⇧⌘7 → opens/focuses the View All window (window opens on modifier release)
+- **Hold ⌘⇧, tap 7 again** → small quick-picker panel near the mouse cursor showing the 8 most recent items (pure recency via `ClipItemManager.fetchRecentItems(limit:)`), most-recent selected. Further 7 taps or ↓/↑ move the selection (wraps). Releasing ⌘⇧ or Enter pastes the selected item into the app that was frontmost when the hotkey was first pressed (item also becomes current clipboard). Esc, click-outside, or the panel resigning key cancels.
+
+Implementation notes:
+
+- `Managers/HotKeyManager.swift` registers ⇧⌘7 via Carbon's `RegisterEventHotKey` (sandbox-safe, no entitlement changes). Carbon re-fires `kEventHotKeyPressed` each time the combo is re-completed, which is what makes "tap 7 again while holding ⌘⇧" work
+- The hotkey itself needs no permissions, but the **quick picker requires Accessibility** (paste synthesis + NSEvent monitors). Without it, ⇧⌘7 degrades to opening the View All window immediately, with a one-time-per-launch permission prompt
+- `QuickPickerManager` installs global + local NSEvent monitors (flagsChanged, keyDown, mouse-down) only while armed/picking; removed on every path back to idle. The panel is a borderless `.nonactivatingPanel` NSPanel subclass overriding `canBecomeKey` (Spotlight pattern) so arrows/Enter/Esc work without activating ClipVault
+- After confirming a selection while ⌘⇧ is still physically held, the paste waits in `pendingPaste` for full modifier release (1.5s safety timeout) so the synthesized ⌘V doesn't merge into ⌘⇧V
+- Wired in `AppDelegate.startNormalOperation()` (`QuickPickerManager.shared.openWindow` + `HotKeyManager.shared.register`); torn down in `applicationWillTerminate`. The DEBUG demo-mode branch intentionally skips registration
+- Hardcoded to ⇧⌘7 (`kVK_ANSI_7` + `cmdKey | shiftKey`), not user-configurable
+- Registration failure is logged (`AppLogger.hotkeys`) and non-fatal — app stays usable via the menu bar
+- Side effect: ⇧⌘7 is swallowed system-wide, so any app using that shortcut won't see it while ClipVault runs
+
+### Local Fork / Build Notes (this machine)
+
+- Upstream `eddmann/ClipVault` is read-only; feature work is pushed to the fork `northfacejmb/ClipVault`
+- `/Applications/ClipVault.app` is a locally built, **ad-hoc signed** Release copy (Edward Mann's notarized v1.2.0 backed up at `~/ClipVault-notarized-backup.app`)
+- Automatic signing fails here (no cert for team ANGUD7343N) — build with:
+  ```bash
+  xcodebuild -project ClipVault.xcodeproj -scheme ClipVault -configuration Release \
+    -derivedDataPath build CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="-" DEVELOPMENT_TEAM="" build
+  ```
+- Because the ad-hoc signature differs from the notarized app's, the Keychain encryption key did not carry over — history captured by the old binary is undecryptable; the app created a fresh key
 
 ### Menu Bar Interactions
 
@@ -335,7 +367,7 @@ Managed by `SettingsManager` wrapping UserDefaults:
 1. **Polling-based monitoring** - 300ms interval may miss very rapid clipboard changes
 2. **No encrypted search index** - must decrypt all items to search
 3. **Content types**: Only text and RTF supported (no images, files, HTML)
-4. **No global keyboard shortcuts** - must click menu bar icon
+4. **Single global keyboard shortcut** - ⇧⌘7 (hardcoded in HotKeyManager.swift, not configurable): tap opens the View All window, hold ⌘⇧ + tap 7 again opens the quick picker (picker requires Accessibility permission; degrades to opening the window without it)
 5. **Single-device encryption key** - stored in Keychain, not synced
 
 ## References
